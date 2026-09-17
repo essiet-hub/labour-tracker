@@ -22,17 +22,54 @@ pass, and the work is committed to `main`.
 
 Agreed on 2026-09-17. **Where these differ from the requirements prompt, these win.**
 
-1. **VE dilatation is entered in 1 cm steps (0–10)**, and **the progress standard is
-   1 cm per hour** (this replaces NICE's 2 cm per 4 h in the prompt):
-   - default `firstStageMinCmPer4h` = **4** (still editable in Settings)
-   - suspected first-stage delay if progress is < 4 cm per 4 h, pro-rated to the
-     actual interval
-   - chart reference line at **1 cm/h**, calculated from the setting
-     (`firstStageMinCmPer4h ÷ 4`)
-   - the section 7.4 test "exactly 2 cm in 4 h – no flag" becomes "exactly 4 cm
-     in 4 h – no flag"; "1 cm in 4 h" and "2 cm in 4 h" are both suspected delay
-   - confirmed delay is unchanged (< `confirmedDelayMinCm` = 1 cm at
-     reassessment)
+1. **First-stage progress has two phases** (replaces the prompt's single
+   4-hourly NICE rule in sections 6.5, 7.2 and 8). VE dilatation is entered in
+   **1 cm steps (0–10)**.
+
+   | | Latent phase (< 4 cm) | Active phase (≥ 4 cm) |
+   |---|---|---|
+   | Starts | first VE / ROM | ESTABLISHED_LABOUR (offered when a VE ≥ 4 cm is saved – 7.1) |
+   | VE due | every **4 h** | every **2 h** |
+   | Expected progress | none – **no slow-progress flag** | **1 cm per hour** |
+   | Delay flag | only **"Not in active phase 12 h after ROM"** | suspected / confirmed delay (below) |
+
+   - **VE due:** timed from the last VE (or from ROM if there is no VE yet).
+     Applies only once ROM or a VE has been recorded. Amber within 30 min,
+     red when overdue.
+   - **Not in active phase 12 h after ROM:** AROM/SROM recorded, 12 h have
+     passed, and there is no ESTABLISHED_LABOUR. **Amber.** It can be
+     acknowledged, and it clears when established labour is recorded.
+   - **Suspected delay (active phase):** each new active-phase VE is compared
+     with the previous active-phase VE. Expected progress is
+     `1 cm/h × interval`, capped so it never goes past 10 cm. If progress is
+     below that, flag "Suspected delay in first stage" (amber). If the VEs are
+     less than 1.5 h apart, compare with the latest active-phase VE at least
+     1.5 h earlier instead; if there isn't one, don't assess.
+   - **Confirmed delay:** at the next VE after a suspected delay, progress since
+     the suspected-delay VE is < 1 cm (`confirmedDelayMinCm`) → "Delay
+     confirmed" (red).
+   - **After oxytocin is started following a delay flag**, the next VE is due at
+     +4 h instead of +2 h (`veAfterOxytocinForDelayHours`).
+   - **Chart reference line:** 1 cm/h from the established-labour VE.
+   - **Settings** (replacing `veIntervalHours`, `firstStageMinCmPer4h` and
+     `reassessAfterSuspectedDelayHours`):
+     - `latentVeIntervalHours` = 4
+     - `activeVeIntervalHours` = 2
+     - `activeMinCmPerHour` = 1
+     - `latentMaxHoursAfterRom` = 12
+     - `confirmedDelayMinCm` = 1 (unchanged)
+     - `veAfterOxytocinForDelayHours` = 4 (unchanged)
+   - **Tests** (replacing the first-stage items in 7.4):
+     - latent phase: slow or no progress raises no flag; VE due at 4 h
+     - ROM + 12 h without established labour → flag; cleared by established
+       labour
+     - active phase: VE due at 2 h
+     - 2 cm in 2 h → no flag; 1 cm in 2 h → suspected delay
+     - 3 h interval pro-rated (3 cm → no flag, 2 cm → suspected delay)
+     - VEs < 1.5 h apart; 9 cm → 10 cm cap
+     - confirmed (< 1 cm) and not confirmed (≥ 1 cm) at the next VE
+     - VEs before established labour are ignored for delay
+     - oxytocin started after a delay → next VE at +4 h
 2. **Flag acknowledgements are stored** in their own `acks` database table,
    keyed by case, flag and threshold (e.g. `ROM:18`). An acknowledged flag stays
    hidden after a restart, and reappears when the condition changes or the next
@@ -40,8 +77,9 @@ Agreed on 2026-09-17. **Where these differ from the requirements prompt, these w
 3. **Oxytocin rate changes never affect flags.** Only `OXYTOCIN_START` after a
    delay flag moves the next VE to +4 h (`veAfterOxytocinForDelayHours`).
    Rate changes are still recorded and shown on the timeline and chart.
-4. **"No change over ≥ 4 h"** is already covered by the pro-rated rule. It gets
-   its own test rather than separate code.
+4. **"No change over ≥ 4 h"** isn't needed as a separate rule. In the active
+   phase it's covered by the 1 cm/h rule; in the latent phase nothing is flagged
+   (decision 1).
 5. **Spontaneous-labour cases never go on 7F.** They are added only when admitted
    to the first-stage ward:
    - new/edit case form: choosing *Spontaneous* removes 7F from the ward options
@@ -127,13 +165,13 @@ before writing any clinical features.
   - `meta` (whether the disclaimer has been accepted)
 - `navigator.storage.persist()` on start-up.
 - `src/config/defaults.ts`: default `Settings` with a comment giving the source
-  of each clinical value (NICE, or the local 1 cm/h standard – decision 1).
+  of each clinical value (NICE, or the local first-stage rules – decision 1).
 - **App shell**: a simple in-app screen switcher (Home ↔ Settings for now) and a
   header with a Settings icon.
 - **First-launch disclaimer** that must be accepted, plus the storage note.
 - **Settings screen**:
-  - every value in section 6.5, with a note that clinical values should match
-    local protocol
+  - every value in section 6.5, with the first-stage settings from decision 1,
+    and a note that clinical values should match local protocol
   - Reset to defaults
   - theme (system/light/dark), vibration, auto-delete period (24/48/72 h)
   - storage note, app version, disclaimer text
@@ -186,14 +224,13 @@ Done when acceptance items 1–2 pass.
 - `src/logic/status.ts`: derived status in the order of precedence from 6.4.
 - `src/logic/progress.ts`, sections 7.1–7.3:
   - whether to offer "established labour" (VE ≥ 4 cm, no ESTABLISHED_LABOUR yet)
-  - first-stage VEs (from established labour onwards, sorted by `at`)
-  - suspected delay: compare with the VE nearest to 4 h earlier; interval ≥ 3.5 h;
-    threshold pro-rated as `firstStageMinCmPer4h × interval / 4 h`
-    (default 4 cm per 4 h = 1 cm/h – decision 1)
-  - reassessment due at +2 h; confirmed delay if progress < 1 cm since the
-    suspected-delay VE
-  - after oxytocin is started following a delay flag, next VE due at +4 h
-    (rate changes are ignored – decision 3)
+  - phase (latent / active) and next-VE-due interval (4 h / 2 h / 4 h after
+    oxytocin for delay)
+  - active-phase VEs (from established labour onwards, sorted by `at`)
+  - suspected delay (< 1 cm/h against the previous active-phase VE, pro-rated,
+    capped at 10 cm) and confirmed delay (< 1 cm at the next VE)
+  - "not in active phase 12 h after ROM"
+  - (all of this follows decision 1; rate changes never matter – decision 3)
   - second-stage passive and active elapsed times; parity-specific flags
 - `src/logic/flags.ts`, section 8:
   - one function `computeFlags(case, events, settings, acks, now)` that returns
@@ -202,12 +239,13 @@ Done when acceptance items 1–2 pass.
   - `sortCases(...)`: red, then amber, then soonest due
   - acknowledgement rules; pyrexia can't be acknowledged
 - `src/logic/autoDelete.ts`: which delivered cases are past the retention period.
-- **Tests**: every case in section 7.4 (with the decision 1 thresholds), plus:
+- **Tests**: every case in section 7.4, with the first-stage cases replaced by
+  the decision 1 list, plus:
   - ROM 18/24 h
   - oxytocin not started (IOL only; cleared by established labour)
   - tachysystole (> 5, not ≥ 5)
   - planned IOL time passed
-  - VE due and overdue boundaries (30 min)
+  - VE due and overdue boundaries (30 min), in both latent and active phases
   - reminder amber at 15 min
   - acknowledgement reappearing at the next threshold
   - status precedence
