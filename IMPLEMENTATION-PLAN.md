@@ -18,22 +18,37 @@ pass, and the work is committed to `main`.
 
 ---
 
-## Decisions to confirm
+## Agreed decisions
 
-These are the working assumptions until you say otherwise.
+Agreed on 2026-09-17. **Where these differ from the requirements prompt, these win.**
 
-1. **VE dilatation steps: 1 cm (0–10).** Section 6.3 says 2 cm steps, but the
-   required tests ("1 cm in 4 h") and the confirmed-delay rule (< 1 cm) need
-   1 cm resolution.
-2. **Flag acknowledgements are stored** in their own `acks` table, keyed by case,
-   flag and threshold (e.g. `ROM:18`), so an acknowledged flag stays hidden
-   after a restart. It reappears when the condition changes or the next
+1. **VE dilatation is entered in 1 cm steps (0–10)**, and **the progress standard is
+   1 cm per hour** (this replaces NICE's 2 cm per 4 h in the prompt):
+   - default `firstStageMinCmPer4h` = **4** (still editable in Settings)
+   - suspected first-stage delay if progress is < 4 cm per 4 h, pro-rated to the
+     actual interval
+   - chart reference line at **1 cm/h**, calculated from the setting
+     (`firstStageMinCmPer4h ÷ 4`)
+   - the section 7.4 test "exactly 2 cm in 4 h – no flag" becomes "exactly 4 cm
+     in 4 h – no flag"; "1 cm in 4 h" and "2 cm in 4 h" are both suspected delay
+   - confirmed delay is unchanged (< `confirmedDelayMinCm` = 1 cm at
+     reassessment)
+2. **Flag acknowledgements are stored** in their own `acks` database table,
+   keyed by case, flag and threshold (e.g. `ROM:18`). An acknowledged flag stays
+   hidden after a restart, and reappears when the condition changes or the next
    threshold is reached.
-3. **"Rate increase" after a delay flag** means an `OXYTOCIN_RATE` higher than the
-   previous rate. `OXYTOCIN_START` always counts.
-4. **"No change over ≥ 4 h"** is covered by the pro-rated < 2 cm per 4 h rule. It
-   gets its own test rather than separate code.
-5. **A spontaneous-labour case on 7F** shows the status "Admitted".
+3. **Oxytocin rate changes never affect flags.** Only `OXYTOCIN_START` after a
+   delay flag moves the next VE to +4 h (`veAfterOxytocinForDelayHours`).
+   Rate changes are still recorded and shown on the timeline and chart.
+4. **"No change over ≥ 4 h"** is already covered by the pro-rated rule. It gets
+   its own test rather than separate code.
+5. **Spontaneous-labour cases never go on 7F.** They are added only when admitted
+   to the first-stage ward:
+   - new/edit case form: choosing *Spontaneous* removes 7F from the ward options
+     (and switches the ward to 7E if 7F was selected)
+   - Transfer offers 7F only for IOL cases that haven't started IOL
+   - status "Admitted" applies to a case in 7E/6EF that has no labour events
+     yet
 6. **Passive second stage** shows a timer only. Delay flags use active pushing
    time (section 7.3).
 7. **Node.js** is needed on the Mac for local development (`brew install node@24`,
@@ -111,8 +126,8 @@ before writing any clinical features.
   - `acks`
   - `meta` (whether the disclaimer has been accepted)
 - `navigator.storage.persist()` on start-up.
-- `src/config/defaults.ts`: default `Settings` with a comment giving the NICE
-  source for each clinical value.
+- `src/config/defaults.ts`: default `Settings` with a comment giving the source
+  of each clinical value (NICE, or the local 1 cm/h standard – decision 1).
 - **App shell**: a simple in-app screen switcher (Home ↔ Settings for now) and a
   header with a Settings icon.
 - **First-launch disclaimer** that must be accepted, plus the storage note.
@@ -137,7 +152,8 @@ switches correctly.
   - gestation today and at scan, from EDD (format `39+4`)
   - BMI to 1 decimal place
 - **Case form** (new and edit), in the order of section 9.2:
-  - segmented ward control; numeric keypads for number fields
+  - segmented ward control (7F hidden for spontaneous labour – decision 5);
+    numeric keypads for number fields
   - live gestation and BMI
   - IOL indication (+ Other text); planned IOL time shown only when ward is 7F
   - history chips, with a VBAC badge preview
@@ -173,10 +189,11 @@ Done when acceptance items 1–2 pass.
   - first-stage VEs (from established labour onwards, sorted by `at`)
   - suspected delay: compare with the VE nearest to 4 h earlier; interval ≥ 3.5 h;
     threshold pro-rated as `firstStageMinCmPer4h × interval / 4 h`
+    (default 4 cm per 4 h = 1 cm/h – decision 1)
   - reassessment due at +2 h; confirmed delay if progress < 1 cm since the
     suspected-delay VE
-  - after oxytocin is started or increased following a delay flag, next VE due
-    at +4 h
+  - after oxytocin is started following a delay flag, next VE due at +4 h
+    (rate changes are ignored – decision 3)
   - second-stage passive and active elapsed times; parity-specific flags
 - `src/logic/flags.ts`, section 8:
   - one function `computeFlags(case, events, settings, acks, now)` that returns
@@ -185,7 +202,7 @@ Done when acceptance items 1–2 pass.
   - `sortCases(...)`: red, then amber, then soonest due
   - acknowledgement rules; pyrexia can't be acknowledged
 - `src/logic/autoDelete.ts`: which delivered cases are past the retention period.
-- **Tests**: every case in section 7.4, plus:
+- **Tests**: every case in section 7.4 (with the decision 1 thresholds), plus:
   - ROM 18/24 h
   - oxytocin not started (IOL only; cleared by established labour)
   - tachysystole (> 5, not ≥ 5)
@@ -215,6 +232,7 @@ Done when all tests pass and acceptance item 7 is covered.
   - oxytocin rate input (mL/h, step 0.5, numeric keypad)
 - **Action bar** (bottom, safe-area aware), which changes with status:
   - 7F: **Start IOL** (ward 7E/6EF + bed), Reminder, Transfer, Note
+  - Transfer offers 7F only for IOL cases that haven't started IOL (decision 5)
   - Otherwise: **VE**, **AROM/SROM**, **Oxytocin** (start / change rate / stop),
     **Contractions**, **Pyrexia** (one-tap save, temperature optional),
     **Reminder**, **More** (the other events)
@@ -258,7 +276,8 @@ Done when acceptance items 5 and 8–11 pass.
     Y = 0–10 cm
   - **VE data:** points joined by a line; station as a small secondary marker,
     with details on tap
-  - **Reference line:** dashed, 0.5 cm/h, starting from the established-labour VE
+  - **Reference line:** dashed, 1 cm/h (from the setting), starting from the
+    established-labour VE
   - **Event markers** (vertical): AROM/SROM, oxytocin start and rate changes
     (labelled in mL/h), epidural, pyrexia, transfer, full dilatation, active
     pushing
