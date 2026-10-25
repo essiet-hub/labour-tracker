@@ -419,8 +419,8 @@ All values in 6.5, dark mode, vibration on/off, auto-delete period, storage note
 
 ## 12. Acceptance checklist
 
-- [ ] I can add a 7F case with bed, initials, G/P, EDD, weight, height, indication, history chips and latest USG (EFW), and see BMI and gestation calculated.
-- [ ] Selecting Previous CS shows a VBAC badge on the case row and a VBAC banner on the case screen.
+- [x] I can add a 7F case with bed, initials, G/P, EDD, weight, height, indication, history chips and latest USG (EFW), and see BMI and gestation calculated.
+- [x] Selecting Previous CS shows a VBAC badge on the case row and a VBAC banner on the case screen.
 - [ ] I can tap **Start IOL**, choose 7E or 6EF, and the case moves to that section.
 - [ ] I can record AROM, oxytocin start and rate changes in mL/h, contractions and VEs (dilatation, station, position), each with an editable time.
 - [ ] Recording a VE ≥ 4 cm offers to mark established labour.

@@ -7,9 +7,9 @@ pass, and the work is committed to `main`.
 | Stage / phase | Status |
 |---|---|
 | Stage 1 – Project setup | ✅ Done |
-| Stage 2 – Placeholder PWA on GitHub Pages | 🟨 Implemented; deployment and device verification pending |
+| Stage 2 – Placeholder PWA on GitHub Pages | 🟨 Deployed; device verification pending |
 | P1 – Foundations | ✅ Done |
-| P2 – Cases | ⬜ |
+| P2 – Cases | ✅ Done |
 | P3 – Clinical logic (tests first) | ⬜ |
 | P4 – Events and timeline | ⬜ |
 | P5 – Flags and reminders in the UI | ⬜ |
@@ -140,6 +140,10 @@ Lint, four unit tests and the production build pass. The local production
 preview opens in Chrome. The following delivery/device checks remain pending;
 Stage 2 is not yet signed off.
 
+Deployment update (2026-10-25): the user enabled GitHub Actions as the Pages
+source and confirmed that deployment succeeded. Real-device installation,
+offline/update behaviour and hospital Wi-Fi checks remain pending.
+
 - [ ] `https://essiet-hub.github.io/labour-tracker/` loads.
 - [ ] It installs to the home screen on an **iPhone (Safari)** and an **Android
       phone (Chrome)**, with the correct icon and name, and opens without browser
@@ -195,6 +199,14 @@ Done when settings survive an app restart, Erase all works, and dark mode
 switches correctly.
 
 ### P2 – Cases
+
+Completed 2026-10-25 (v0.3.0). New/edit case form, ward lists, persisted case
+details, confirmed deletion and VBAC displays implemented. Gestation uses Hong
+Kong calendar dates; planned IOL times are entered and displayed in Hong Kong
+time. Plausibility warnings do not prevent saving. Pure calculation tests were
+written before implementation. All 41 tests, lint and build pass; the local
+production preview was checked at 375 px, including live calculations, VBAC and
+case persistence after reload. Acceptance items 1–2 are covered by UI tests.
 
 - `src/config/picklists.ts`: IOL indications, history flags, fetal positions,
   liquor, presentation, placenta, wards (codes and display names).

@@ -1,0 +1,107 @@
+import 'fake-indexeddb/auto'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { db } from '../db/db'
+import { CasesScreen } from './CasesScreen'
+import { CaseForm } from './CaseForm'
+
+vi.mock('virtual:pwa-register/react', () => ({
+  useRegisterSW: () => ({ needRefresh: [false], updateServiceWorker: vi.fn() }),
+}))
+
+beforeEach(async () => {
+  for (const table of db.tables) await table.clear()
+})
+
+async function coreFields(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByLabelText('Bed number *'), '12')
+  await user.type(screen.getByLabelText('Initials *'), 'ab')
+  fireEvent.change(screen.getByLabelText('EDD *'), { target: { value: '2026-10-28' } })
+}
+
+it('adds a full 7F case, edits VBAC, survives remount and confirms deletion', async () => {
+  const user = userEvent.setup()
+  let app = render(<CasesScreen onSettings={vi.fn()} />)
+  await user.click(await screen.findByRole('button', { name: '+ New case' }))
+  await coreFields(user)
+  await user.clear(screen.getByLabelText('Gravida *'))
+  await user.type(screen.getByLabelText('Gravida *'), '2')
+  await user.clear(screen.getByLabelText('Para *'))
+  await user.type(screen.getByLabelText('Para *'), '1')
+  await user.type(screen.getByLabelText('Age (years)'), '32')
+  await user.type(screen.getByLabelText('Weight (kg)'), '65')
+  await user.type(screen.getByLabelText('Height (cm)'), '165')
+  await user.selectOptions(screen.getByLabelText('IOL indication'), 'Post-dates')
+  fireEvent.change(screen.getByLabelText('Planned IOL date and time (Hong Kong)'), { target: { value: '2026-10-26T08:30' } })
+  await user.click(screen.getByRole('button', { name: 'Previous CS' }))
+  expect(screen.getByText('VBAC', { exact: true })).toBeInTheDocument()
+  await user.click(screen.getByText('Latest ultrasound', { exact: true }))
+  fireEvent.change(screen.getByLabelText('Ultrasound date'), { target: { value: '2026-10-20' } })
+  await user.type(screen.getByLabelText('EFW (g)'), '3200')
+  await user.type(screen.getByLabelText('EFW centile'), '50')
+  await user.selectOptions(screen.getByLabelText('Presentation'), 'Cephalic')
+  await user.type(screen.getByLabelText('Liquor (cm)'), '12')
+  await user.selectOptions(screen.getByLabelText('Placenta'), 'Anterior')
+  await user.type(screen.getByLabelText('Notes'), 'Fictitious test case')
+  await user.click(screen.getByRole('button', { name: 'Save case' }))
+  expect(await screen.findByRole('heading', { name: 'Bed 12 · AB' })).toBeInTheDocument()
+  expect(screen.getByText('VBAC · Previous CS')).toBeInTheDocument()
+  expect(screen.getByText('BMI 23.9')).toBeInTheDocument()
+  expect(screen.getByText(/EFW 3200 g at/)).toBeInTheDocument()
+  const saved = (await db.cases.toArray())[0]
+  expect(saved).toMatchObject({ ward: '7F', initials: 'AB', gravida: 2, para: 1, plannedIolAt: '2026-10-26T00:30:00.000Z', usg: { efwGrams: 3200, liquor: { method: 'AFI', valueCm: 12 } } })
+
+  await user.click(screen.getByRole('button', { name: 'Home' }))
+  expect(await screen.findByText('VBAC', { exact: true })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: /Bed 12 · AB/ }))
+  await user.click(screen.getByRole('button', { name: 'Edit case summary' }))
+  await user.click(screen.getByRole('button', { name: 'Previous CS' }))
+  await user.click(screen.getByRole('button', { name: 'Save case' }))
+  await screen.findByRole('heading', { name: 'Bed 12 · AB' })
+  await waitFor(() => expect(screen.queryByText('VBAC · Previous CS')).not.toBeInTheDocument())
+  app.unmount()
+  app = render(<CasesScreen onSettings={vi.fn()} />)
+  await user.click(await screen.findByRole('button', { name: /Bed 12 · AB/ }))
+  expect(screen.queryByText('VBAC · Previous CS')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Delete case' }))
+  expect(await db.cases.count()).toBe(1)
+  await user.click(screen.getByRole('button', { name: 'Keep case' }))
+  expect(await db.cases.count()).toBe(1)
+  await user.click(screen.getByRole('button', { name: 'Delete case' }))
+  await user.click(screen.getByRole('button', { name: 'Confirm delete' }))
+  expect(await screen.findByText('No cases yet. Add a case to start tracking.')).toBeInTheDocument()
+  expect(await db.cases.count()).toBe(0)
+  app.unmount()
+})
+
+it('shows live calculations and allows saving plausibility warnings', async () => {
+  const user = userEvent.setup()
+  const onSaved = vi.fn()
+  render(<CaseForm today="2026-10-25" onSaved={onSaved} onCancel={vi.fn()} onDirty={vi.fn()} />)
+  await coreFields(user)
+  expect(screen.getByText('39+4')).toBeInTheDocument()
+  await user.type(screen.getByLabelText('Weight (kg)'), '29')
+  await user.type(screen.getByLabelText('Height (cm)'), '165')
+  expect(screen.getByText('10.7')).toBeInTheDocument()
+  expect(screen.getByText('Weight is outside 30–250 kg. Please check.')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Save case' }))
+  await waitFor(() => expect(onSaved).toHaveBeenCalled())
+  expect((await db.cases.toArray())[0]).toMatchObject({ weightKg: 29 })
+})
+
+it('validates required fields and switches spontaneous labour away from 7F', async () => {
+  const user = userEvent.setup()
+  render(<CaseForm today="2026-10-25" onSaved={vi.fn()} onCancel={vi.fn()} onDirty={vi.fn()} />)
+  await user.click(screen.getByRole('button', { name: 'Save case' }))
+  expect(screen.getByRole('alert')).toHaveTextContent('Enter a bed number.')
+  expect(await db.cases.count()).toBe(0)
+  await user.click(screen.getByRole('button', { name: 'Spontaneous' }))
+  const ward = within(screen.getByRole('group', { name: 'Ward' }))
+  expect(ward.queryByRole('button', { name: '7F' })).not.toBeInTheDocument()
+  expect(ward.getByRole('button', { name: '7E' })).toHaveAttribute('aria-pressed', 'true')
+  expect(screen.queryByLabelText('IOL indication')).not.toBeInTheDocument()
+  await coreFields(user)
+  await user.click(screen.getByRole('button', { name: 'Save case' }))
+  await waitFor(async () => expect(await db.cases.count()).toBe(1))
+  expect((await db.cases.toArray())[0]).toMatchObject({ ward: '7E', labourType: 'Spontaneous' })
+})

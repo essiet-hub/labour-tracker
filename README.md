@@ -7,9 +7,10 @@ own phone.
 > This app is a personal reminder tool. It does not replace clinical judgement,
 > the medical record or local protocols. Always verify timings.
 
-**Status:** P1 foundations complete: local storage, first-launch disclaimer,
-editable settings and light/dark themes. Case entry comes in P2. PWA deployment
-and real-device checks remain pending. See [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md)
+**Status:** P2 cases complete: add/edit cases, ward lists, gestation and BMI,
+ultrasound details and VBAC badges. GitHub Pages deployment has succeeded;
+real-device checks remain pending. Clinical events, flags and charting are still
+to come. See [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md)
 for what comes next and [labour-tracker-claude-code-prompt.md](labour-tracker-claude-code-prompt.md)
 for the full requirements.
 
@@ -72,7 +73,22 @@ Commit the generated files so builds do not need to generate them again.
 Cases are stored only on this device. Clearing browser data will erase them.
 Changing phones does not transfer cases. Safari storage may be evicted after
 non-use; installing to the home screen reduces this risk. There is no export or
-backup. The placeholder does not yet accept case data.
+backup. Use bed number and initials only, including in notes.
+
+## Add and review cases
+
+Tap **+ New case** on Home. Enter bed number, 1–4 initials, G/P and EDD; the other
+details are optional. Gestation and BMI update as you enter dates and measurements.
+Expand **Latest ultrasound** to record the scan date, EFW and other scan details.
+Selecting **Previous CS** shows a VBAC badge and banner.
+
+Cases appear in the 6EF, 7E or 7F ward section. Tap a case to open its details;
+tap its summary to edit. **Delete case** requires a separate confirmation and
+deletes the case and its associated events and acknowledgements. Spontaneous
+labour cases can be placed in 7E or 6EF; choosing Spontaneous switches 7F to 7E.
+
+All dates used for gestation and all planned IOL times use Asia/Hong_Kong.
+Plausibility warnings ask you to check an entry but still allow saving it.
 
 ## Change settings and maintain storage
 
@@ -84,7 +100,9 @@ them. Theme follows the system by default; Light and Dark are explicit overrides
 Default thresholds are in `src/config/defaults.ts`. The first-stage values follow
 the local decisions in the implementation plan; other clinical values follow
 the requirements. Confirm values against local protocol before using them.
-Flag calculations and case entry have not been implemented yet.
+Pick-lists and plausibility ranges are in `src/config/picklists.ts`. Gestation,
+BMI and form validation are pure functions in `src/logic/` with unit tests.
+Flag calculations have not been implemented yet.
 
 The database schema is in `src/db/db.ts`. Never remove the existing Dexie version
 or delete the database to add a field. Add a new version with an upgrade function

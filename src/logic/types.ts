@@ -1,3 +1,8 @@
+import type { historyFlags, iolIndications } from '../config/picklists'
+
+export type HistoryFlag = typeof historyFlags[number]
+export type IolIndication = typeof iolIndications[number]
+
 export interface Settings {
   latentVeIntervalHours: number
   activeVeIntervalHours: number
@@ -35,10 +40,10 @@ export interface Case {
   weightKg?: number
   heightCm?: number
   labourType: 'IOL' | 'Spontaneous'
-  iolIndication?: string
+  iolIndication?: IolIndication
   iolIndicationOther?: string
   plannedIolAt?: string
-  historyFlags: string[]
+  historyFlags: HistoryFlag[]
   historyNote?: string
   usg?: {
     date: string
@@ -51,6 +56,8 @@ export interface Case {
   notes?: string
   deliveredAt?: string
 }
+
+export type CaseInput = Omit<Case, 'id' | 'createdAt' | 'updatedAt' | 'deliveredAt'>
 
 export type Liquor = 'Clear' | 'Blood-stained' | 'Meconium – light' | 'Meconium – thick' | 'Scanty / none seen'
 export type FetalPosition = 'OA' | 'LOA' | 'ROA' | 'OT' | 'LOT' | 'ROT' | 'OP' | 'LOP' | 'ROP' | 'Not determined'

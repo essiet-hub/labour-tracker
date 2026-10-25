@@ -5,6 +5,7 @@ import { db } from './db/db'
 import { acceptDisclaimer, loadSettings, requestPersistentStorage } from './db/settings'
 import type { Settings } from './logic/types'
 import { SettingsScreen } from './screens/SettingsScreen'
+import { CasesScreen } from './screens/CasesScreen'
 
 export default function App() {
   const [settings, setSettings] = useState<Settings>(defaultSettings)
@@ -70,20 +71,14 @@ export default function App() {
   </main>
 
   return <main className="app">
-    <header className="app-header">
-      <h1 ref={heading} tabIndex={-1}>{screen === 'home' ? 'Labour Case Tracker' : 'Settings'}</h1>
-      {screen === 'home' ? <button aria-label="Settings" onClick={() => setScreen('settings')}><span aria-hidden="true">⚙</span></button> : <button onClick={goHome}>Home</button>}
-    </header>
-    <UpdateBanner />
-    {screen === 'home' ? <section className="empty-state">
-      <h2>My cases</h2>
-      <p>No cases yet.</p>
-      <p className="muted">Case entry is coming in the next build phase. Settings and on-device storage are ready.</p>
-    </section> : <SettingsScreen settings={settings} onSaved={setSettings} onDirty={setDirty} onErased={() => {
+    {screen === 'home' ? <CasesScreen onSettings={() => setScreen('settings')} /> : <>
+      <header className="app-header"><h1 ref={heading} tabIndex={-1}>Settings</h1><button onClick={goHome}>Home</button></header>
+      <UpdateBanner />
+      <SettingsScreen settings={settings} onSaved={setSettings} onDirty={setDirty} onErased={() => {
       setSettings(defaultSettings())
       setDirty(false)
       setScreen('home')
       setAccepted(false)
-    }} />}
+    }} /></>}
   </main>
 }
