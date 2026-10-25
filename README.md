@@ -7,7 +7,9 @@ own phone.
 > This app is a personal reminder tool. It does not replace clinical judgement,
 > the medical record or local protocols. Always verify timings.
 
-**Status:** Stage 2 placeholder PWA implemented; deployment and device checks pending. See [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md)
+**Status:** P1 foundations complete: local storage, first-launch disclaimer,
+editable settings and light/dark themes. Case entry comes in P2. PWA deployment
+and real-device checks remain pending. See [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md)
 for what comes next and [labour-tracker-claude-code-prompt.md](labour-tracker-claude-code-prompt.md)
 for the full requirements.
 
@@ -34,7 +36,7 @@ npm run build    # type-check and build into dist/
 | `src/screens/` | The app's screens |
 | `src/styles/` | Global CSS and design tokens |
 
-## Publish and install the placeholder
+## Publish and install
 
 The repository must be public. In GitHub, open **Settings → Pages → Build and
 deployment** and choose **GitHub Actions** as the source. Push to `main` to run
@@ -72,5 +74,21 @@ Changing phones does not transfer cases. Safari storage may be evicted after
 non-use; installing to the home screen reduces this risk. There is no export or
 backup. The placeholder does not yet accept case data.
 
-The remaining maintenance guidance is added as the database and clinical phases
-are implemented.
+## Change settings and maintain storage
+
+Open the cog button on Home to change settings. Tap **Save settings** to apply
+them. Theme follows the system by default; Light and Dark are explicit overrides.
+**Reset to defaults** restores every preference and clinical threshold.
+**Erase all data** requires typing `ERASE` and also resets disclaimer acceptance.
+
+Default thresholds are in `src/config/defaults.ts`. The first-stage values follow
+the local decisions in the implementation plan; other clinical values follow
+the requirements. Confirm values against local protocol before using them.
+Flag calculations and case entry have not been implemented yet.
+
+The database schema is in `src/db/db.ts`. Never remove the existing Dexie version
+or delete the database to add a field. Add a new version with an upgrade function
+when existing records need backfilling, and test that old data survives the
+upgrade. Optional fields that need no backfill can use the existing store.
+
+The remaining maintenance guidance is added as the clinical phases are implemented.

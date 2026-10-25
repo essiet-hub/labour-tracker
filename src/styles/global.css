@@ -1,31 +1,40 @@
-/* Placeholder global styles. Design tokens (light/dark colours, type scale,
-   spacing) are added in Phase 1 – see IMPLEMENTATION-PLAN.md. */
-:root {
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  color-scheme: light dark;
-}
+@import './tokens.css';
 
-body {
-  margin: 0;
-}
-
-.app {
-  padding: 1rem;
-  padding-top: max(1rem, env(safe-area-inset-top));
-}
-
-.update-banner {
-  margin-block: 1rem;
-}
-
-.update-banner button {
-  min-height: 44px;
-  padding: 0.75rem 1rem;
-  font: inherit;
-  cursor: pointer;
-}
-
-:focus-visible {
-  outline: 3px solid currentColor;
-  outline-offset: 3px;
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--background); color: var(--text); }
+button, input, select { font: inherit; min-height: var(--tap-target); }
+button { cursor: pointer; border: 1px solid var(--muted); border-radius: 6px; padding: var(--space-2) var(--space-4); background: var(--surface); color: var(--accent); }
+button:disabled { cursor: default; opacity: 0.6; }
+button.primary { background: var(--accent); color: var(--surface); border-color: var(--accent); font-weight: 600; }
+button.danger { color: var(--red); border-color: var(--red); }
+input, select { width: 100%; border: 1px solid var(--muted); border-radius: 4px; padding: var(--space-2); background: var(--surface); color: var(--text); }
+input[type='checkbox'] { width: 24px; height: 24px; min-height: 24px; accent-color: var(--accent); }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+h1 { font-size: var(--font-title); line-height: 1.2; margin: 0; }
+h2, legend { font-size: var(--font-heading); font-weight: 650; }
+p { margin-block: 0 var(--space-4); }
+.app { max-width: 640px; margin: auto; padding: 0 max(var(--space-4), env(safe-area-inset-left)) max(var(--space-8), env(safe-area-inset-bottom)); }
+.app-header { position: sticky; top: 0; z-index: 1; background: var(--background); border-bottom: 1px solid var(--muted); display: flex; gap: var(--space-3); align-items: center; justify-content: space-between; padding-block: max(var(--space-4), env(safe-area-inset-top)) var(--space-4); margin-bottom: var(--space-6); }
+.app-header h1 { font-size: var(--font-heading); }
+.muted, small { color: var(--muted); }
+.intro { padding-top: var(--space-8); }
+.intro h1 { margin-bottom: var(--space-6); }
+.stack { display: grid; gap: var(--space-4); }
+.actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.settings-form fieldset { min-width: 0; margin: 0; padding: var(--space-4) 0; border: 0; border-bottom: 1px solid var(--muted); }
+.settings-form legend { padding: 0; margin-bottom: var(--space-3); }
+.field { display: grid; gap: var(--space-2); margin-bottom: var(--space-4); }
+.field:last-child { margin-bottom: 0; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+.check-field { display: flex; align-items: center; gap: var(--space-3); min-height: var(--tap-target); }
+.save-bar { position: sticky; bottom: 0; background: var(--background); border-top: 1px solid var(--muted); padding-block: var(--space-3) max(var(--space-3), env(safe-area-inset-bottom)); }
+.save-bar button { width: 100%; }
+.notice { border-left: 4px solid var(--accent); padding: var(--space-3) var(--space-4); background: var(--surface); }
+.error { color: var(--red); }
+.update-banner { margin-block: var(--space-4); }
+.update-banner button { width: 100%; text-align: left; }
+.empty-state { padding-block: var(--space-8); }
+.version { font-size: var(--font-small); color: var(--muted); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }

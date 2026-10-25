@@ -8,7 +8,7 @@ pass, and the work is committed to `main`.
 |---|---|
 | Stage 1 – Project setup | ✅ Done |
 | Stage 2 – Placeholder PWA on GitHub Pages | 🟨 Implemented; deployment and device verification pending |
-| P1 – Foundations | ⬜ |
+| P1 – Foundations | ✅ Done |
 | P2 – Cases | ⬜ |
 | P3 – Clinical logic (tests first) | ⬜ |
 | P4 – Events and timeline | ⬜ |
@@ -155,6 +155,12 @@ Stage 2 is not yet signed off.
 ## Stage 3 – Build phases
 
 ### P1 – Foundations
+
+Completed 2026-10-25 (v0.2.0). Design tokens approved in chat before building
+the screens. Settings and disclaimer survive reload; reset restores defaults;
+typed-confirmation erase clears all five tables in one transaction. Verified
+the dark theme at 375 px in Chrome and after reload. Eight tests, lint and build
+pass. Device installation and hospital Wi-Fi checks remain in Stage 2 above.
 
 - **Design tokens** in `src/styles/tokens.css`:
   - 4–6 colours each for light and dark (background, surface, text, muted,
