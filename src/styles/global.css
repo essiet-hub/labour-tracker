@@ -13,3 +13,19 @@ body {
   padding: 1rem;
   padding-top: max(1rem, env(safe-area-inset-top));
 }
+
+.update-banner {
+  margin-block: 1rem;
+}
+
+.update-banner button {
+  min-height: 44px;
+  padding: 0.75rem 1rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 3px;
+}

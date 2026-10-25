@@ -7,7 +7,7 @@ pass, and the work is committed to `main`.
 | Stage / phase | Status |
 |---|---|
 | Stage 1 – Project setup | ✅ Done |
-| Stage 2 – Placeholder PWA on GitHub Pages | ⬜ |
+| Stage 2 – Placeholder PWA on GitHub Pages | 🟨 Implemented; deployment and device verification pending |
 | P1 – Foundations | ⬜ |
 | P2 – Cases | ⬜ |
 | P3 – Clinical logic (tests first) | ⬜ |
@@ -133,6 +133,12 @@ before writing any clinical features.
    needs no 404 fallback for deep links.
 
 ### Done when
+
+Implementation checkpoint (2026-10-25): manifest, generated icons, precaching,
+explicit-tap update banner, version display and Pages workflow are implemented.
+Lint, four unit tests and the production build pass. The local production
+preview opens in Chrome. The following delivery/device checks remain pending;
+Stage 2 is not yet signed off.
 
 - [ ] `https://essiet-hub.github.io/labour-tracker/` loads.
 - [ ] It installs to the home screen on an **iPhone (Safari)** and an **Android
