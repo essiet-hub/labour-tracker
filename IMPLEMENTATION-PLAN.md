@@ -10,7 +10,7 @@ pass, and the work is committed to `main`.
 | Stage 2 – Placeholder PWA on GitHub Pages | 🟨 Deployed; device verification pending |
 | P1 – Foundations | ✅ Done |
 | P2 – Cases | ✅ Done |
-| P3 – Clinical logic (tests first) | ⬜ |
+| P3 – Clinical logic (tests first) | ✅ Done |
 | P4 – Events and timeline | ⬜ |
 | P5 – Flags and reminders in the UI | ⬜ |
 | P6 – Progress chart | ⬜ |
@@ -105,6 +105,13 @@ Agreed on 2026-09-17. **Where these differ from the requirements prompt, these w
      gestation, BMI and “USG at … weeks: EFW …”.
    - Verified with 53 tests including database upgrade and manual gestation
      persistence/advancement, plus lint and production build.
+9. **First-stage reassessment clarified on 2026-10-26:**
+   - The 4-hour VE interval after oxytocin starts following a delay flag is
+     measured from the **last VE**, not the oxytocin start time. For example,
+     last VE 10:00, oxytocin starts 11:00 → next VE due 14:00.
+   - At the next VE, progress of at least 1 cm avoids confirmation, but that VE
+     is still assessed against the usual 1 cm/hour rule (including the 1.5-hour
+     comparison minimum). A new suspected-delay flag can therefore remain.
 
 ---
 
@@ -256,6 +263,17 @@ case persistence after reload. Acceptance items 1–2 are covered by UI tests.
 Done when acceptance items 1–2 pass.
 
 ### P3 – Clinical logic (pure functions, tests first, no UI)
+
+Completed 2026-10-26 (v0.4.0). Pure status, progress, flag, next-due, case-sorting
+and retention-selection functions added, with tests written before implementation.
+All 96 tests, lint and production build pass. Tests cover acceptance item 7's
+logic; display of flags remains in P5. No event entry or flag UI is added here.
+Due items remain amber at the exact due time and become red only after it;
+ROM/second-stage/retention thresholds apply at their exact threshold. First-stage
+VE reminders and current delay flags stop at full dilatation/active pushing or
+delivery; passive time freezes when pushing starts, and timers freeze at delivery.
+Reassessments follow decision 9. Acknowledgements include a condition fingerprint
+so edits, new source events and escalation reveal a flag again.
 
 - `src/logic/types.ts`: `Case`, the `LabourEvent` union and `Settings`, exactly
   as in section 6. (Types can be written in P1 if convenient.)

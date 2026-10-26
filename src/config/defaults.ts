@@ -1,5 +1,12 @@
 import type { Settings } from '../logic/types'
 
+// Fixed windows from the agreed first-stage rules and requirements section 8.
+export const clinicalWindows = {
+  activeComparisonMinimumHours: 1.5,
+  veWarningMinutes: 30,
+  reminderWarningMinutes: 15,
+} as const
+
 export function defaultSettings(): Settings {
   return {
     // Local first-stage rules agreed in IMPLEMENTATION-PLAN.md, decision 1.

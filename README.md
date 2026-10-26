@@ -7,10 +7,11 @@ own phone.
 > This app is a personal reminder tool. It does not replace clinical judgement,
 > the medical record or local protocols. Always verify timings.
 
-**Status:** P2 cases complete: add/edit cases, ward lists, gestation and BMI,
-ultrasound details and VBAC badges. GitHub Pages deployment has succeeded;
-real-device checks remain pending. Clinical events, flags and charting are still
-to come. See [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md)
+**Status:** P3 clinical calculations complete, with tests for status, progress,
+flags, reminders and retention. The app currently supports case entry, ward
+lists, ultrasound details and VBAC badges. Event entry, flag displays and the
+chart are added in the next phases. GitHub Pages deployment has succeeded;
+real-device checks remain pending. See [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md)
 for what comes next and [labour-tracker-claude-code-prompt.md](labour-tracker-claude-code-prompt.md)
 for the full requirements.
 
@@ -107,7 +108,11 @@ the local decisions in the implementation plan; other clinical values follow
 the requirements. Confirm values against local protocol before using them.
 Pick-lists and plausibility ranges are in `src/config/picklists.ts`. Gestation,
 BMI and form validation are pure functions in `src/logic/` with unit tests.
-Flag calculations have not been implemented yet.
+Clinical calculations are in `src/logic/status.ts`, `progress.ts`, `flags.ts` and
+`autoDelete.ts`. They accept stored data and an explicit clock value and do not
+change data or access the database. The 4-hour interval after oxytocin for delay
+is measured from the last VE; rate changes do not affect it. These calculations
+are tested but have not yet been connected to event entry or flag displays.
 
 Database version 2 merges existing GDM history subtypes into GDM. Retired history
 and ultrasound values are retained in storage but omitted from controls and
