@@ -1,5 +1,5 @@
 import { plausibleRanges } from '../config/picklists'
-import { dateDay } from './gestation'
+import { dateDay, parseGestation } from './gestation'
 import type { CaseInput } from './types'
 
 export function validateCase(value: CaseInput) {
@@ -7,14 +7,21 @@ export function validateCase(value: CaseInput) {
   const warnings: string[] = []
   if (!value.bed.trim()) errors.bed = 'Enter a bed number.'
   if (!/^[a-z]{1,4}$/i.test(value.initials.trim())) errors.initials = 'Enter 1–4 letters for initials.'
-  if (dateDay(value.edd) === null) errors.edd = 'Enter a valid EDD.'
+  if (dateDay(value.edd) === null) {
+    if (value.gestationSource === 'manual') errors.gestationWeeks = 'Enter gestation today as whole weeks and days (0–6).'
+    else errors.edd = 'Enter a valid EDC.'
+  }
   if (!Number.isInteger(value.gravida) || value.gravida < 1) errors.gravida = 'Gravida must be a whole number of at least 1.'
   if (!Number.isInteger(value.para) || value.para < 0) errors.para = 'Para must be a whole number of at least 0.'
   if (value.age !== undefined && (!Number.isInteger(value.age) || value.age <= 0)) errors.age = 'Enter a positive whole number for age.'
   if (value.labourType === 'Spontaneous' && value.ward === '7F') errors.ward = 'Spontaneous labour cases must be in 7E or 6EF.'
   if (value.labourType === 'IOL' && value.iolIndication === 'Other' && !value.iolIndicationOther?.trim()) errors.iolIndicationOther = 'Describe the IOL indication.'
   if (value.plannedIolAt && !Number.isFinite(Date.parse(value.plannedIolAt))) errors.plannedIolAt = 'Enter a valid planned IOL date and time.'
-  if (value.usg && dateDay(value.usg.date) === null) errors.usgDate = 'Enter a valid ultrasound date.'
+  if (value.usg?.gestationAtScan !== undefined) {
+    if (!parseGestation(value.usg.gestationAtScan)) errors.scanWeeks = 'Enter gestation at scan as whole weeks and days (0–6).'
+    if (value.usg.date && dateDay(value.usg.date) === null) errors.usgDate = 'Enter a valid ultrasound date.'
+  } else if (value.usg && dateDay(value.usg.date) === null) errors.usgDate = 'Enter a valid ultrasound date or enter gestation at scan manually.'
+  if (value.usg?.acCentile !== undefined && (!Number.isFinite(value.usg.acCentile) || value.usg.acCentile < 0 || value.usg.acCentile > 100)) errors.acCentile = 'AC centile must be between 0 and 100.'
   if (value.para > value.gravida - 1) warnings.push('Para is greater than gravida − 1. Please check.')
   const checks = [
     [value.weightKg, plausibleRanges.weightKg, 'Weight is outside 30–250 kg. Please check.'],

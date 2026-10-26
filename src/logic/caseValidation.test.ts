@@ -35,3 +35,8 @@ it('requires Other indication text and a valid date for ultrasound data', () => 
 it('does not allow a spontaneous labour case on 7F', () => {
   expect(validateCase({ ...valid, labourType: 'Spontaneous' }).errors).toHaveProperty('ward')
 })
+
+it('accepts manual scan gestation without a scan date and validates days and AC centile', () => {
+  expect(validateCase({ ...valid, usg: { date: '', gestationAtScan: '36+2', acCentile: 95 } }).errors).toEqual({})
+  expect(validateCase({ ...valid, usg: { date: '', gestationAtScan: '36+7', acCentile: 101 } }).errors).toMatchObject({ scanWeeks: expect.any(String), acCentile: expect.any(String) })
+})

@@ -77,9 +77,14 @@ backup. Use bed number and initials only, including in notes.
 
 ## Add and review cases
 
-Tap **+ New case** on Home. Enter bed number, 1–4 initials, G/P and EDD; the other
-details are optional. Gestation and BMI update as you enter dates and measurements.
-Expand **Latest ultrasound** to record the scan date, EFW and other scan details.
+Tap **+ New case** on Home. Enter bed number, 1–4 initials and G/P, then either
+EDC or gestation today in weeks and days (0–6). Manual gestation advances each
+day, including after restarting the app. BMI updates from weight and height.
+Expand **Latest ultrasound** to enter EFW, EFW centile, AC centile and liquor.
+Scan gestation can come from the scan date or be entered manually; a scan date
+is optional when entering scan gestation manually. Manual scan gestation stays
+fixed. Summaries show onset or IOL with its indication, today's gestation, BMI
+and “USG at … weeks: EFW …”. EDC is available in the edit form.
 Selecting **Previous CS** shows a VBAC badge and banner.
 
 Cases appear in the 6EF, 7E or 7F ward section. Tap a case to open its details;
@@ -103,6 +108,10 @@ the requirements. Confirm values against local protocol before using them.
 Pick-lists and plausibility ranges are in `src/config/picklists.ts`. Gestation,
 BMI and form validation are pure functions in `src/logic/` with unit tests.
 Flag calculations have not been implemented yet.
+
+Database version 2 merges existing GDM history subtypes into GDM. Retired history
+and ultrasound values are retained in storage but omitted from controls and
+summaries.
 
 The database schema is in `src/db/db.ts`. Never remove the existing Dexie version
 or delete the database to add a field. Add a new version with an upgrade function

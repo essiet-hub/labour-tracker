@@ -91,6 +91,20 @@ Agreed on 2026-09-17. **Where these differ from the requirements prompt, these w
    time (section 7.3).
 7. **Node.js** is needed on the Mac for local development (`brew install node@24`,
    or the installer from nodejs.org). GitHub Actions does the official builds.
+8. **Case form and summaries revised on 2026-10-26 (v0.3.1):**
+   - Enter EDC or gestation today as weeks/days. Manual gestation is converted
+     to an equivalent stored EDC so it advances daily; the chosen entry mode is
+     retained. EDC is not displayed in summaries.
+   - Add IOL indication “GDM + LGA”. History adds “LGA” and “Precipitated labour”,
+     replaces both GDM subtypes with “GDM”, and removes Antepartum haemorrhage,
+     Low-lying placenta and Previous shoulder dystocia from controls/summaries.
+   - USG adds AC centile and manual gestation at scan (fixed, weeks/days; scan
+     date optional in manual mode). Presentation and placenta controls/display
+     are removed. Older stored values are retained. Dexie version 2 merges GDM.
+   - Rows and summaries show spontaneous onset or IOL with indication, current
+     gestation, BMI and “USG at … weeks: EFW …”.
+   - Verified with 53 tests including database upgrade and manual gestation
+     persistence/advancement, plus lint and production build.
 
 ---
 

@@ -16,7 +16,7 @@ beforeEach(async () => {
 async function coreFields(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText('Bed number *'), '12')
   await user.type(screen.getByLabelText('Initials *'), 'ab')
-  fireEvent.change(screen.getByLabelText('EDD *'), { target: { value: '2026-10-28' } })
+  fireEvent.change(screen.getByLabelText('EDC *'), { target: { value: '2026-10-28' } })
 }
 
 it('adds a full 7F case, edits VBAC, survives remount and confirms deletion', async () => {
@@ -39,15 +39,17 @@ it('adds a full 7F case, edits VBAC, survives remount and confirms deletion', as
   fireEvent.change(screen.getByLabelText('Ultrasound date'), { target: { value: '2026-10-20' } })
   await user.type(screen.getByLabelText('EFW (g)'), '3200')
   await user.type(screen.getByLabelText('EFW centile'), '50')
-  await user.selectOptions(screen.getByLabelText('Presentation'), 'Cephalic')
+  await user.type(screen.getByLabelText('AC centile'), '95')
   await user.type(screen.getByLabelText('Liquor (cm)'), '12')
-  await user.selectOptions(screen.getByLabelText('Placenta'), 'Anterior')
+  expect(screen.queryByLabelText('Presentation')).not.toBeInTheDocument()
+  expect(screen.queryByLabelText('Placenta')).not.toBeInTheDocument()
   await user.type(screen.getByLabelText('Notes'), 'Fictitious test case')
   await user.click(screen.getByRole('button', { name: 'Save case' }))
   expect(await screen.findByRole('heading', { name: 'Bed 12 · AB' })).toBeInTheDocument()
   expect(screen.getByText('VBAC · Previous CS')).toBeInTheDocument()
   expect(screen.getByText('BMI 23.9')).toBeInTheDocument()
-  expect(screen.getByText(/EFW 3200 g at/)).toBeInTheDocument()
+  expect(screen.getByText(/USG at 38\+6 weeks: EFW 3200 g/)).toBeInTheDocument()
+  expect(screen.getByText(/AC centile 95/)).toBeInTheDocument()
   const saved = (await db.cases.toArray())[0]
   expect(saved).toMatchObject({ ward: '7F', initials: 'AB', gravida: 2, para: 1, plannedIolAt: '2026-10-26T00:30:00.000Z', usg: { efwGrams: 3200, liquor: { method: 'AFI', valueCm: 12 } } })
 
@@ -72,6 +74,38 @@ it('adds a full 7F case, edits VBAC, survives remount and confirms deletion', as
   expect(await screen.findByText('No cases yet. Add a case to start tracking.')).toBeInTheDocument()
   expect(await db.cases.count()).toBe(0)
   app.unmount()
+})
+
+it('saves manual gestations without EDC or scan date and advances gestation when edited tomorrow', async () => {
+  const user = userEvent.setup()
+  const onSaved = vi.fn()
+  const form = render(<CaseForm today="2026-10-26" onSaved={onSaved} onCancel={vi.fn()} onDirty={vi.fn()} />)
+  await user.type(screen.getByLabelText('Bed number *'), '15')
+  await user.type(screen.getByLabelText('Initials *'), 'cd')
+  await user.click(screen.getByRole('button', { name: 'Enter gestation today' }))
+  expect(screen.queryByLabelText('EDC *')).not.toBeInTheDocument()
+  await user.type(screen.getByLabelText('Gestation today: weeks *'), '39')
+  await user.clear(screen.getByLabelText('Gestation today: days (0–6) *'))
+  await user.type(screen.getByLabelText('Gestation today: days (0–6) *'), '4')
+  await user.selectOptions(screen.getByLabelText('IOL indication'), 'GDM + LGA')
+  for (const label of ['GDM', 'LGA', 'Precipitated labour']) await user.click(screen.getByRole('button', { name: label }))
+  for (const label of ['GDM – diet', 'GDM – insulin/metformin', 'Antepartum haemorrhage', 'Low-lying placenta', 'Previous shoulder dystocia']) expect(screen.queryByRole('button', { name: label })).not.toBeInTheDocument()
+  await user.click(screen.getByText('Latest ultrasound', { exact: true }))
+  await user.click(screen.getByRole('button', { name: 'Enter scan gestation' }))
+  await user.type(screen.getByLabelText('Gestation at scan: weeks *'), '36')
+  await user.clear(screen.getByLabelText('Gestation at scan: days (0–6) *'))
+  await user.type(screen.getByLabelText('Gestation at scan: days (0–6) *'), '2')
+  await user.type(screen.getByLabelText('EFW (g)'), '3200')
+  await user.type(screen.getByLabelText('AC centile'), '96')
+  await user.click(screen.getByRole('button', { name: 'Save case' }))
+  await waitFor(() => expect(onSaved).toHaveBeenCalled())
+  const entry = (await db.cases.toArray())[0]
+  expect(entry).toMatchObject({ edd: '2026-10-29', gestationSource: 'manual', iolIndication: 'GDM + LGA', historyFlags: ['GDM', 'LGA', 'Precipitated labour'], usg: { date: '', gestationAtScan: '36+2', acCentile: 96 } })
+  form.unmount()
+  render(<CaseForm entry={entry} today="2026-10-27" onSaved={vi.fn()} onCancel={vi.fn()} onDirty={vi.fn()} />)
+  expect(screen.getByLabelText('Gestation today: weeks *')).toHaveValue(39)
+  expect(screen.getByLabelText('Gestation today: days (0–6) *')).toHaveValue(5)
+  expect(screen.getByLabelText('Gestation at scan: days (0–6) *')).toHaveValue(2)
 })
 
 it('shows live calculations and allows saving plausibility warnings', async () => {

@@ -1,6 +1,7 @@
 import type { historyFlags, iolIndications } from '../config/picklists'
 
-export type HistoryFlag = typeof historyFlags[number]
+// Retain obsolete values in existing records without offering them for new entry.
+export type HistoryFlag = typeof historyFlags[number] | 'GDM – diet' | 'GDM – insulin/metformin' | 'Antepartum haemorrhage' | 'Low-lying placenta' | 'Previous shoulder dystocia'
 export type IolIndication = typeof iolIndications[number]
 
 export interface Settings {
@@ -37,6 +38,7 @@ export interface Case {
   gravida: number
   para: number
   edd: string
+  gestationSource?: 'edc' | 'manual'
   weightKg?: number
   heightCm?: number
   labourType: 'IOL' | 'Spontaneous'
@@ -49,6 +51,8 @@ export interface Case {
     date: string
     efwGrams?: number
     efwCentile?: number
+    acCentile?: number
+    gestationAtScan?: string
     presentation?: 'Cephalic' | 'Breech' | 'Transverse' | 'Oblique' | 'Unstable'
     liquor?: { method: 'AFI' | 'DVP'; valueCm: number }
     placenta?: 'Anterior' | 'Posterior' | 'Fundal' | 'Lateral' | 'Low-lying' | 'Praevia'

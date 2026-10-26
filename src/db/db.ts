@@ -18,6 +18,10 @@ export class TrackerDatabase extends Dexie {
       acks: '[caseId+flagId+threshold], caseId',
       meta: 'key',
     })
+    this.version(2).stores({}).upgrade(transaction => transaction.table('cases').toCollection().modify(entry => {
+      const flags: string[] = entry.historyFlags ?? []
+      entry.historyFlags = [...new Set(flags.map(flag => flag === 'GDM – diet' || flag === 'GDM – insulin/metformin' ? 'GDM' : flag))]
+    }))
   }
 }
 

@@ -1,12 +1,12 @@
 import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { historyFlags, iolIndications, placentas, presentations, wards } from '../config/picklists'
+import { historyFlags, iolIndications, wards } from '../config/picklists'
 import { VbacBadge } from '../components/CaseSummary'
 import { createCase, updateCase } from '../db/cases'
 import { bmi } from '../logic/bmi'
 import { validateCase } from '../logic/caseValidation'
 import { toHongKongInput } from '../logic/dates'
-import { gestation } from '../logic/gestation'
+import { edcFromGestation, gestation } from '../logic/gestation'
 import type { Case, CaseInput, Ward } from '../logic/types'
 
 interface Draft {
@@ -17,6 +17,9 @@ interface Draft {
   gravida: string
   para: string
   edd: string
+  gestationSource: 'edc' | 'manual'
+  gestationWeeks: string
+  gestationDays: string
   weightKg: string
   heightCm: string
   labourType: Case['labourType']
@@ -28,45 +31,55 @@ interface Draft {
   usgDate: string
   efwGrams: string
   efwCentile: string
-  presentation: NonNullable<Case['usg']>['presentation'] | ''
+  acCentile: string
+  scanSource: 'date' | 'manual'
+  scanWeeks: string
+  scanDays: string
   liquorMethod: 'AFI' | 'DVP'
   liquorValue: string
-  placenta: NonNullable<Case['usg']>['placenta'] | ''
   notes: string
 }
 
 const optionalNumber = (value: string) => value.trim() === '' ? undefined : Number(value)
 
-function initialDraft(entry?: Case): Draft {
+function initialDraft(today: string, entry?: Case): Draft {
+  const todayGa = (entry ? gestation(entry.edd, today) : null)?.split('+')
+  const scanGa = entry?.usg?.gestationAtScan?.split('+')
   return {
     ward: entry?.ward ?? '7F', bed: entry?.bed ?? '', initials: entry?.initials ?? '',
     age: entry?.age?.toString() ?? '', gravida: entry?.gravida.toString() ?? '1', para: entry?.para.toString() ?? '0',
     edd: entry?.edd ?? '', weightKg: entry?.weightKg?.toString() ?? '', heightCm: entry?.heightCm?.toString() ?? '',
+    gestationSource: entry?.gestationSource ?? 'edc', gestationWeeks: todayGa?.[0] ?? '', gestationDays: todayGa?.[1] ?? '0',
     labourType: entry?.labourType ?? 'IOL', iolIndication: entry?.iolIndication ?? '',
     iolIndicationOther: entry?.iolIndicationOther ?? '', plannedIolAt: toHongKongInput(entry?.plannedIolAt),
     historyFlags: entry?.historyFlags ?? [], historyNote: entry?.historyNote ?? '',
     usgDate: entry?.usg?.date ?? '', efwGrams: entry?.usg?.efwGrams?.toString() ?? '',
-    efwCentile: entry?.usg?.efwCentile?.toString() ?? '', presentation: entry?.usg?.presentation ?? '',
+    efwCentile: entry?.usg?.efwCentile?.toString() ?? '', acCentile: entry?.usg?.acCentile?.toString() ?? '',
+    scanSource: entry?.usg?.gestationAtScan !== undefined ? 'manual' : 'date', scanWeeks: scanGa?.[0] ?? '', scanDays: scanGa?.[1] ?? '0',
     liquorMethod: entry?.usg?.liquor?.method ?? 'AFI', liquorValue: entry?.usg?.liquor?.valueCm.toString() ?? '',
-    placenta: entry?.usg?.placenta ?? '', notes: entry?.notes ?? '',
+    notes: entry?.notes ?? '',
   }
 }
 
-function toInput(draft: Draft): CaseInput {
-  const hasUsg = [draft.usgDate, draft.efwGrams, draft.efwCentile, draft.presentation, draft.liquorValue, draft.placenta].some(Boolean)
+function toInput(draft: Draft, today: string, entry?: Case): CaseInput {
+  const hasUsg = [draft.usgDate, draft.efwGrams, draft.efwCentile, draft.acCentile, draft.liquorValue, draft.scanSource === 'manual' ? draft.scanWeeks || (draft.scanDays !== '0' ? draft.scanDays : '') : ''].some(Boolean)
   const planned = draft.plannedIolAt ? Date.parse(`${draft.plannedIolAt}+08:00`) : NaN
   return {
     ward: draft.ward, bed: draft.bed, initials: draft.initials,
     age: optionalNumber(draft.age), gravida: draft.gravida === '' ? NaN : Number(draft.gravida), para: draft.para === '' ? NaN : Number(draft.para),
-    edd: draft.edd, weightKg: optionalNumber(draft.weightKg), heightCm: optionalNumber(draft.heightCm),
+    edd: draft.gestationSource === 'manual' ? edcFromGestation(draft.gestationWeeks, draft.gestationDays, today) ?? '' : draft.edd,
+    gestationSource: draft.gestationSource, weightKg: optionalNumber(draft.weightKg), heightCm: optionalNumber(draft.heightCm),
     labourType: draft.labourType,
     iolIndication: draft.labourType === 'IOL' ? draft.iolIndication || undefined : undefined,
     iolIndicationOther: draft.labourType === 'IOL' && draft.iolIndication === 'Other' ? draft.iolIndicationOther.trim() || undefined : undefined,
     plannedIolAt: draft.labourType === 'IOL' && draft.ward === '7F' && draft.plannedIolAt ? (Number.isFinite(planned) ? new Date(planned).toISOString() : draft.plannedIolAt) : undefined,
     historyFlags: draft.historyFlags, historyNote: draft.historyNote.trim() || undefined,
     usg: hasUsg ? {
+      // Preserve older stored fields while removing their controls and display.
+      ...entry?.usg,
       date: draft.usgDate, efwGrams: optionalNumber(draft.efwGrams), efwCentile: optionalNumber(draft.efwCentile),
-      presentation: draft.presentation || undefined, placenta: draft.placenta || undefined,
+      acCentile: optionalNumber(draft.acCentile),
+      gestationAtScan: draft.scanSource === 'manual' ? `${draft.scanWeeks}+${draft.scanDays}` : undefined,
       liquor: draft.liquorValue !== '' ? { method: draft.liquorMethod, valueCm: Number(draft.liquorValue) } : undefined,
     } : undefined,
     notes: draft.notes.trim() || undefined,
@@ -76,15 +89,15 @@ function toInput(draft: Draft): CaseInput {
 export function CaseForm({ entry, today, onSaved, onCancel, onDirty }: {
   entry?: Case; today: string; onSaved: (entry: Case) => void; onCancel: () => void; onDirty: (dirty: boolean) => void
 }) {
-  const [draft, setDraft] = useState(() => initialDraft(entry))
+  const [draft, setDraft] = useState(() => initialDraft(today, entry))
   const [submitted, setSubmitted] = useState(false)
   const [busy, setBusy] = useState(false)
   const [saveError, setSaveError] = useState('')
   const errorSummary = useRef<HTMLDivElement>(null)
-  const input = toInput(draft)
+  const input = toInput(draft, today, entry)
   const { errors, warnings } = validateCase(input)
-  const ga = gestation(draft.edd, today)
-  const scanGa = gestation(draft.edd, draft.usgDate)
+  const ga = gestation(input.edd, today)
+  const scanGa = draft.scanSource === 'manual' ? input.usg?.gestationAtScan : gestation(input.edd, draft.usgDate)
 
   function set<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft(previous => ({ ...previous, [key]: value }))
@@ -127,7 +140,7 @@ export function CaseForm({ entry, today, onSaved, onCancel, onDirty }: {
     </div>
   }
 
-  function numberField(key: 'age' | 'gravida' | 'para' | 'weightKg' | 'heightCm' | 'efwGrams' | 'efwCentile' | 'liquorValue', label: string, integer = false) {
+  function numberField(key: 'age' | 'gravida' | 'para' | 'weightKg' | 'heightCm' | 'efwGrams' | 'efwCentile' | 'acCentile' | 'liquorValue' | 'gestationWeeks' | 'gestationDays' | 'scanWeeks' | 'scanDays', label: string, integer = false) {
     const error = submitted ? errors[key] : undefined
     return <div className="field">
       <label htmlFor={`case-${key}`}>{label}</label>
@@ -155,7 +168,14 @@ export function CaseForm({ entry, today, onSaved, onCancel, onDirty }: {
       <legend>Maternal details</legend>
       {numberField('age', 'Age (years)', true)}
       <div className="field-row">{numberField('gravida', 'Gravida *', true)}{numberField('para', 'Para *', true)}</div>
-      {textField('edd', 'EDD *', 'date')}
+      <div className="segmented" role="group" aria-label="Gestation entry">
+        <button type="button" aria-pressed={draft.gestationSource === 'edc'} onClick={() => set('gestationSource', 'edc')}>Enter EDC</button>
+        <button type="button" aria-pressed={draft.gestationSource === 'manual'} onClick={() => set('gestationSource', 'manual')}>Enter gestation today</button>
+      </div>
+      {draft.gestationSource === 'edc' ? textField('edd', 'EDC *', 'date') : <>
+        <div className="field-row">{numberField('gestationWeeks', 'Gestation today: weeks *', true)}{numberField('gestationDays', 'Gestation today: days (0–6) *', true)}</div>
+        <p className="muted">Gestation advances automatically each day.</p>
+      </>}
       <p className="derived" aria-live="polite">Gestation today · <strong>{ga ?? '—'}</strong></p>
       <div className="field-row">{numberField('weightKg', 'Weight (kg)')}{numberField('heightCm', 'Height (cm)')}</div>
       <p className="derived" aria-live="polite">BMI · <strong>{bmi(input.weightKg, input.heightCm) ?? '—'}</strong></p>
@@ -186,14 +206,21 @@ export function CaseForm({ entry, today, onSaved, onCancel, onDirty }: {
       <fieldset disabled={busy}>
         <legend className="sr-only">Latest ultrasound details</legend>
         {textField('usgDate', 'Ultrasound date', 'date')}
+        <div className="segmented" role="group" aria-label="Scan gestation entry">
+          <button type="button" aria-pressed={draft.scanSource === 'date'} onClick={() => set('scanSource', 'date')}>From scan date</button>
+          <button type="button" aria-pressed={draft.scanSource === 'manual'} onClick={() => set('scanSource', 'manual')}>Enter scan gestation</button>
+        </div>
+        {draft.scanSource === 'manual' && <>
+          <div className="field-row">{numberField('scanWeeks', 'Gestation at scan: weeks *', true)}{numberField('scanDays', 'Gestation at scan: days (0–6) *', true)}</div>
+          <p className="muted">Scan date is optional when gestation at scan is entered manually.</p>
+        </>}
         <p className="derived" aria-live="polite">Gestation at scan · <strong>{scanGa ?? '—'}</strong></p>
         <div className="field-row">{numberField('efwGrams', 'EFW (g)', true)}{numberField('efwCentile', 'EFW centile')}</div>
-        <label className="field"><span>Presentation</span><select value={draft.presentation} onChange={event => set('presentation', event.target.value as Draft['presentation'])}><option value="">Not recorded</option>{presentations.map(value => <option key={value}>{value}</option>)}</select></label>
+        {numberField('acCentile', 'AC centile')}
         <div className="field-row">
           <label className="field"><span>Liquor measure</span><select value={draft.liquorMethod} onChange={event => set('liquorMethod', event.target.value as Draft['liquorMethod'])}><option>AFI</option><option>DVP</option></select></label>
           {numberField('liquorValue', 'Liquor (cm)')}
         </div>
-        <label className="field"><span>Placenta</span><select value={draft.placenta} onChange={event => set('placenta', event.target.value as Draft['placenta'])}><option value="">Not recorded</option>{placentas.map(value => <option key={value}>{value}</option>)}</select></label>
       </fieldset>
     </details>
     <label className="field"><span>Notes</span><textarea disabled={busy} value={draft.notes} onChange={event => set('notes', event.target.value)} rows={3} /></label>

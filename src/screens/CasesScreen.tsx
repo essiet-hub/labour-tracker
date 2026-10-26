@@ -75,7 +75,7 @@ export function CasesScreen({ onSettings }: { onSettings: () => void }) {
               <button type="button" className="case-row" onClick={() => navigate({ kind: 'detail', id: entry.id })}>
                 <span className="case-title">Bed {entry.bed} · {entry.initials} <VbacBadge historyFlags={entry.historyFlags} /></span>
                 <CaseMeasurements entry={entry} today={today} />
-                <CaseSummary entry={entry} />
+                <CaseSummary entry={entry} today={today} />
               </button>
             </li>)}</ul>}
           </details>
@@ -89,7 +89,7 @@ export function CasesScreen({ onSettings }: { onSettings: () => void }) {
       <VbacBadge historyFlags={selected.historyFlags} banner />
       <button type="button" className="summary-edit" aria-label="Edit case summary" onClick={() => navigate({ kind: 'edit', id: selected.id })}>
         <span className="summary-heading">Case summary <span className="muted">· Tap to edit</span></span>
-        <CaseSummary entry={selected} full />
+        <CaseSummary entry={selected} today={today} full />
       </button>
       <p className="muted">Event recording, reminders and the progress chart will be added in later build phases.</p>
       {error && <p className="error" role="alert">{error}</p>}
